@@ -1,3 +1,6 @@
+from django.core.cache import cache
+from utils.constants import Cachekey
+
 from django.shortcuts import render
 from django.http import HttpRequest, Http404
 from rest_framework import status
@@ -12,8 +15,18 @@ class PostListView(APIView):
     permission_classes = [IsAuthenticated] #인증된 사람만 post조회 작성 가능
     parser_classes = [FormParser, MultiPartParser] # 이미지 업로드를 위해 FormParser, MultiPartParser 추가
     def get(self, request:HttpRequest, format=None):
+        cache_key = Cachekey.POSTING_LIST
+        cached = cache.get(cache_key)
+        if cached is not None : 
+            return Response(
+                status=status.HTTP_200_OK,
+                data=cached
+            )
+
         posts = Post.objects.all()
-        serializer=PostSerializer(posts, many=True)
+        serializer = PostSerializer(posts, many=True)
+        cache.set(cache_key, serializer.data,60*3)
+
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def post(self, request:HttpRequest,fromat=None):
